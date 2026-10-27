@@ -23,11 +23,15 @@ Les effets sont visibles dans les partages d'**écran entier** (Teams, Zoom, Mee
 
 Réglages : double-clic sur l'icône de notification, ou relancer `Tomee.exe`. Ils sont enregistrés dans `%APPDATA%\Tomee\settings.ini`, et les erreurs éventuelles dans `erreurs.log` au même endroit.
 
+## Confidentialité
+
+Tomee ne se connecte jamais à Internet et n'enregistre aucune frappe. Détails, fichiers écrits et vérification de l'installateur : [SECURITY.md](SECURITY.md).
+
 ## Installer
 
 Lancez `Tomee-Setup.exe` : installation pour l'utilisateur courant, **sans droits administrateur**, dans `%LOCALAPPDATA%\Programs\Tomee`. L'assistant crée le raccourci du menu Démarrer (et, au choix, celui du Bureau et le lancement au démarrage de Windows), puis ajoute Tomee à *Paramètres → Applications* pour la désinstallation. Relancer l'installateur met à jour une version existante en conservant les réglages.
 
-Ligne de commande : `Tomee-Setup.exe /S` (installation silencieuse), `Desinstaller.exe /uninstall [/S]` (désinstallation ; les réglages dans `%APPDATA%\Tomee` sont conservés).
+Ligne de commande : `Tomee-Setup.exe /S [/desktop] [/autostart] [/launch]` (installation silencieuse, avec raccourci Bureau, lancement au démarrage, lancement immédiat), `Desinstaller.exe /uninstall [/S]` (désinstallation ; les réglages dans `%APPDATA%\Tomee` sont conservés).
 
 ## Compiler
 

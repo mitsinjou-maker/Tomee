@@ -108,7 +108,8 @@ namespace Tomee
                     try
                     {
                         if (f.FieldType == typeof(bool)) f.SetValue(s, bool.Parse(v));
-                        else if (f.FieldType == typeof(int)) f.SetValue(s, int.Parse(v, CultureInfo.InvariantCulture));
+                        // bornes larges : un fichier modifié à la main ne peut pas provoquer de débordement ni de plantage
+                        else if (f.FieldType == typeof(int)) f.SetValue(s, Math.Max(0, Math.Min(10000, int.Parse(v, CultureInfo.InvariantCulture))));
                         else if (f.FieldType == typeof(Color))
                             f.SetValue(s, Color.FromArgb(unchecked((int)0xFF000000 | Convert.ToInt32(v.TrimStart('#'), 16))));
                     }

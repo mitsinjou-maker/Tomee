@@ -13,7 +13,7 @@ namespace Tomee
     /// <summary>
     /// Installateur / désinstallateur de Tomee (installation par utilisateur, sans droits administrateur).
     ///   Tomee-Setup.exe               assistant d'installation
-    ///   Tomee-Setup.exe /S            installation silencieuse
+    ///   Tomee-Setup.exe /S            installation silencieuse ; options /desktop, /launch, /autostart
     ///   Desinstaller.exe /uninstall   désinstallation (/S pour silencieux)
     /// </summary>
     internal static class SetupProgram
@@ -27,12 +27,15 @@ namespace Tomee
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            bool silent = false, uninstall = false;
+            bool silent = false, uninstall = false, desktop = false, launch = false, autostart = Installer.AutostartEnabled;
             foreach (var a in args)
             {
                 var x = a.ToLowerInvariant();
                 if (x == "/s" || x == "/silent") silent = true;
                 if (x == "/uninstall") uninstall = true;
+                if (x == "/desktop") desktop = true;
+                if (x == "/launch") launch = true;
+                if (x == "/autostart") autostart = true;
             }
 
             try
@@ -40,7 +43,7 @@ namespace Tomee
                 if (uninstall) return Installer.Uninstall(silent) ? 0 : 1;
                 if (silent)
                 {
-                    Installer.Install(Installer.DefaultFolder, false, Installer.AutostartEnabled, false, null);
+                    Installer.Install(Installer.DefaultFolder, desktop, autostart, launch, null);
                     return 0;
                 }
                 Application.Run(new SetupForm());
@@ -183,14 +186,17 @@ namespace Tomee
 
             // Le désinstallateur ne peut pas se supprimer lui-même : cmd s'en charge juste après sa fermeture.
             // Seuls nos fichiers sont supprimés, et le dossier uniquement s'il est vide.
-            string self = Path.Combine(folder, UninstallerName);
-            Process.Start(new ProcessStartInfo("cmd.exe",
-                "/c ping -n 3 127.0.0.1 >nul & del /f /q \"" + self + "\" & rmdir \"" + folder + "\"")
+            // Le chemin passe par une variable d'environnement : cmd ne réinterprète donc pas son contenu
+            // (un dossier contenant « % » ou « & » ne peut pas injecter de commande).
+            var psi = new ProcessStartInfo("cmd.exe",
+                "/d /c ping -n 3 127.0.0.1 >nul & del /f /q \"%TOMEE_DIR%\\" + UninstallerName + "\" & rmdir \"%TOMEE_DIR%\"")
             {
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
                 UseShellExecute = false,
-            });
+            };
+            psi.EnvironmentVariables["TOMEE_DIR"] = folder;
+            Process.Start(psi);
 
             if (!silent) MessageBox.Show(AppInfo.Name + " a été désinstallé.", AppInfo.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
             return true;
@@ -203,27 +209,25 @@ namespace Tomee
             if (EventWaitHandle.TryOpenExisting(AppInfo.ExitEvent, out exit))
                 using (exit) exit.Set();
 
+            // Seuls les processus identifiés comme Tomee (ou l'ancienne version « Projecteur ») sont fermés,
+            // jamais un autre programme qui porterait le même nom.
             var deadline = DateTime.Now.AddSeconds(5);
-            foreach (var p in Process.GetProcessesByName("Tomee"))
-                using (p)
-                {
-                    if (!p.WaitForExit((int)Math.Max(0, (deadline - DateTime.Now).TotalMilliseconds)))
-                        try { p.Kill(); p.WaitForExit(2000); } catch (InvalidOperationException) { } catch (System.ComponentModel.Win32Exception) { }
-                }
-
-            foreach (var p in Process.GetProcessesByName("Projecteur"))
-                using (p)
-                {
-                    try
+            foreach (var name in new[] { AppInfo.Name, "Projecteur" })
+                foreach (var p in Process.GetProcessesByName(name))
+                    using (p)
                     {
-                        var info = p.MainModule.FileVersionInfo;
-                        if (info.ProductName != "Projecteur" || info.Comments == null || !info.Comments.StartsWith("Mise en valeur du curseur")) continue;
-                        p.Kill();
-                        p.WaitForExit(2000);
+                        if (!AppInfo.IsTomeeProcess(p, name)) continue;
+                        try
+                        {
+                            if (!p.WaitForExit((int)Math.Max(0, (deadline - DateTime.Now).TotalMilliseconds)))
+                            {
+                                p.Kill();
+                                p.WaitForExit(2000);
+                            }
+                        }
+                        catch (InvalidOperationException) { }
+                        catch (System.ComponentModel.Win32Exception) { }
                     }
-                    catch (InvalidOperationException) { }
-                    catch (System.ComponentModel.Win32Exception) { }
-                }
         }
 
         static void Retry(Action action)

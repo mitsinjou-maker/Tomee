@@ -214,7 +214,11 @@ namespace Tomee
 
                 try
                 {
-                    Clipboard.SetImage(shot);
+                    // la capture peut montrer des informations sensibles : pas de synchronisation vers le presse-papiers cloud
+                    var data = new DataObject();
+                    data.SetImage(shot);
+                    data.SetData("CanUploadToCloudClipboard", new MemoryStream(BitConverter.GetBytes(0)));
+                    Clipboard.SetDataObject(data, true);
                     if (toFile)
                     {
                         var dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures), AppInfo.Name);

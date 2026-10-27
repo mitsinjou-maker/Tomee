@@ -17,6 +17,8 @@ Alternative à Mouzz pour Windows : met en valeur le curseur pour les **réunion
 | Localiser le curseur | `Ctrl+Alt+F` | Anneaux qui se resserrent sur le curseur |
 | Pause | `Ctrl+Alt+X` | Suspend tous les effets |
 
+**Tablette graphique** : en mode dessin, l'épaisseur du stylo suit la pression du stylet (Windows Ink), les traits sont lissés, et l'appui long (clic droit) de Windows est désactivé. Le halo reste visible même quand Windows masque le curseur pendant l'utilisation du stylet. Réglages dans *Zoom et dessin*.
+
 En mode dessin : `P` `M` `L` `A` `R` `E` `T` (outils), `1`–`8` (couleurs), molette ou `+`/`−` (épaisseur), `Maj` (carré / cercle / 45°), `Ctrl+Z` / `Ctrl+Y`, `Suppr` (tout effacer), `Ctrl+S` (capture), `Tab` (barre d'outils), `Échap` (quitter).
 
 Les effets sont visibles dans les partages d'**écran entier** (Teams, Zoom, Meet, OBS, enregistreurs). Multi-écrans et écrans haute densité (DPI par écran) pris en charge.

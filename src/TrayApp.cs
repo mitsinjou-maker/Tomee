@@ -169,6 +169,7 @@ namespace Tomee
             board = new DrawBoard(mon, fx.CursorScale, S, bg);
             board.CloseRequested += delegate { closeBoardRequested = true; };
             board.CaptureRequested += CaptureBoard;
+            board.PenActivity += delegate { fx.OnPenInput(clock.ElapsedMilliseconds); };
             fx.SuppressClicks = true;
             zoom.Frozen = true;
             fx.BringToTop();
@@ -239,9 +240,10 @@ namespace Tomee
 
         // ---------- entrées ----------
 
-        bool OnMouse(int msg, Point pt, int delta)
+        bool OnMouse(int msg, Point pt, int delta, bool fromPen)
         {
             long now = clock.ElapsedMilliseconds;
+            if (fromPen) fx.OnPenInput(now);
             switch (msg)
             {
                 case Native.WM_MOUSEMOVE: fx.OnMouseMove(pt, now); return false;

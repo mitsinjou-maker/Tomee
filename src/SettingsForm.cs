@@ -162,6 +162,8 @@ namespace Tomee
             p.Header("Dessin à l'écran (Ctrl+Alt+D) et tableau blanc (Ctrl+Alt+W)");
             p.ColorPick("Couleur par défaut", () => S.DrawColor, v => S.DrawColor = v, DrawBoard.Palette);
             p.Slider("Épaisseur par défaut", 1, 40, " px", () => S.DrawWidth, v => S.DrawWidth = v);
+            p.Check("Tablette graphique : épaisseur selon la pression du stylet", () => S.PenPressure, v => S.PenPressure = v);
+            p.Check("Lisser les traits du stylo et du surligneur", () => S.DrawSmoothing, v => S.DrawSmoothing = v);
 
             BuildShortcutsPage();
         }

@@ -82,6 +82,11 @@ namespace Tomee
             LayoutBar();
             RebuildCommitted();
             Render(LocalBounds);
+            // désactive les retours visuels de Windows Ink (cercles au toucher, appui long…) sur le tableau
+            int off = 0;
+            foreach (int feedback in new[] { 2, 3, 4, 5, 6 })
+                try { Native.SetWindowFeedbackSetting(Handle, feedback, 0, 4, ref off); }
+                catch (EntryPointNotFoundException) { break; }
             Show(true);
             Native.SetForegroundWindow(Handle);
             ShowMessage("Mode dessin — Échap pour quitter, Tab pour masquer la barre");
@@ -475,6 +480,56 @@ namespace Tomee
 
         // ---------- souris / clavier ----------
 
+        readonly Native.POINTER_PEN_INFO[] penHistory = new Native.POINTER_PEN_INFO[64];
+
+        /// <summary>Déclenché à chaque entrée stylet (le halo doit alors rester visible).</summary>
+        public event Action PenActivity;
+
+        /// <summary>
+        /// Messages WM_POINTER du stylet : on récupère tous les points intermédiaires (pas seulement
+        /// ceux que Windows transmettrait à la souris) avec leur pression. Retourne false pour les autres
+        /// pointeurs (tactile), laissés à Windows qui les convertit en messages souris.
+        /// </summary>
+        bool OnPointer(int msg, IntPtr wParam)
+        {
+            uint id = (uint)(wParam.ToInt64() & 0xFFFF);
+            int type;
+            if (!Native.GetPointerType(id, out type) || type != Native.PT_PEN) return false;
+            uint count = (uint)penHistory.Length;
+            if (!Native.GetPointerPenInfoHistory(id, ref count, penHistory) || count == 0) return false;
+            if (PenActivity != null) PenActivity();
+
+            switch (msg)
+            {
+                case Native.WM_POINTERDOWN:
+                    OnMouseDown(PenPoint(penHistory[0]), PenPressure(penHistory[0]));
+                    break;
+                case Native.WM_POINTERUP:
+                    OnMouseUp();
+                    break;
+                default:
+                    // l'historique va du plus récent (index 0) au plus ancien
+                    for (int i = (int)Math.Min(count, (uint)penHistory.Length) - 1; i >= 0; i--)
+                    {
+                        var e = penHistory[i];
+                        if (current != null && (e.pointerInfo.pointerFlags & Native.POINTER_FLAG_INCONTACT) == 0) continue;
+                        OnMouseMove(PenPoint(e), PenPressure(e));
+                    }
+                    break;
+            }
+            return true;
+        }
+
+        Point PenPoint(Native.POINTER_PEN_INFO e)
+        {
+            return new Point(e.pointerInfo.ptPixelLocation.X - Bounds.X, e.pointerInfo.ptPixelLocation.Y - Bounds.Y);
+        }
+
+        static float PenPressure(Native.POINTER_PEN_INFO e)
+        {
+            return (e.penMask & Native.PEN_MASK_PRESSURE) != 0 ? Math.Min(1f, e.pressure / 1024f) : -1f;
+        }
+
         static Point PointFrom(IntPtr lParam)
         {
             long l = lParam.ToInt64();
@@ -484,7 +539,8 @@ namespace Tomee
         static bool ShiftDown { get { return Native.GetKeyState(0x10) < 0; } }
         static bool CtrlDown { get { return Native.GetKeyState(0x11) < 0; } }
 
-        void OnMouseDown(Point p)
+        /// <param name="pressure">Pression du stylet (0–1), ou -1 pour la souris.</param>
+        void OnMouseDown(Point p, float pressure = -1)
         {
             if (barVisible && bar.Contains(p))
             {
@@ -501,13 +557,17 @@ namespace Tomee
                 Render(text.Bounds());
                 return;
             }
-            current = new Shape { Tool = tool, Color = color, Width = width * sc, A = p, B = p };
-            if (tool == Tool.Pen || tool == Tool.Marker) current.Points.Add(p);
+            current = new Shape { Tool = tool, Color = color, Width = width * sc, A = p, B = p, Smooth = S.DrawSmoothing };
+            if (tool == Tool.Pen || tool == Tool.Marker)
+            {
+                current.Points.Add(p);
+                if (pressure >= 0 && S.PenPressure) current.Pressures.Add(pressure);
+            }
             Native.SetCapture(Handle);
             Render(current.Bounds());
         }
 
-        void OnMouseMove(Point p)
+        void OnMouseMove(Point p, float pressure = -1)
         {
             int h = current == null ? HitButton(p) : -1;
             if (h != hover) { hover = h; Render(barArea); }
@@ -518,7 +578,9 @@ namespace Tomee
                 var last = current.Points[current.Points.Count - 1];
                 if (Math.Abs(last.X - p.X) + Math.Abs(last.Y - p.Y) < 2) return;
                 current.Points.Add(p);
-                Render(current.SegmentBounds(last, p));
+                // un trait commencé à la souris (sans pression) reste à épaisseur constante
+                if (current.Pressures.Count > 0) current.Pressures.Add(pressure >= 0 ? pressure : current.Pressures[current.Pressures.Count - 1]);
+                Render(current.TailBounds());
                 return;
             }
             var before = current.Bounds();
@@ -618,6 +680,15 @@ namespace Tomee
             {
                 switch (m.Msg)
                 {
+                    case Native.WM_POINTERDOWN:
+                    case Native.WM_POINTERUPDATE:
+                    case Native.WM_POINTERUP:
+                        if (OnPointer(m.Msg, m.WParam)) { m.Result = IntPtr.Zero; return; }
+                        break;
+                    case Native.WM_TABLET_QUERYSYSTEMGESTURESTATUS:
+                        // pas d'appui long = clic droit, ni de gestes ou retours visuels du stylet pendant le dessin
+                        m.Result = new IntPtr(0x00010019);
+                        return;
                     case Native.WM_LBUTTONDOWN: OnMouseDown(PointFrom(m.LParam)); return;
                     case Native.WM_MOUSEMOVE: OnMouseMove(PointFrom(m.LParam)); return;
                     case Native.WM_LBUTTONUP: OnMouseUp(); return;

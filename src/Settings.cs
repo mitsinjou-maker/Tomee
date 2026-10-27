@@ -62,6 +62,8 @@ namespace Tomee
         // Dessin
         public Color DrawColor = Color.FromArgb(235, 40, 40);
         public int DrawWidth = 4;
+        public bool PenPressure = true;
+        public bool DrawSmoothing = true;
 
         // Général
         public bool ShowToasts = true;

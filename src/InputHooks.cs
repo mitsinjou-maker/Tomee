@@ -7,7 +7,8 @@ namespace Tomee
     internal sealed unsafe class InputHooks : IDisposable
     {
         /// <summary>Retourne true pour bloquer l'évènement.</summary>
-        public delegate bool MouseHandler(int msg, Point pt, int wheelDelta);
+        /// <param name="fromPen">Vrai si l'évènement est généré par un stylet ou le tactile (et non une vraie souris).</param>
+        public delegate bool MouseHandler(int msg, Point pt, int wheelDelta, bool fromPen);
         public delegate void KeyHandler(int vk, int scan, bool down);
 
         public MouseHandler OnMouse;
@@ -48,9 +49,11 @@ namespace Tomee
                 var info = (Native.MSLLHOOKSTRUCT*)lParam;
                 int msg = wParam.ToInt32();
                 int delta = (short)((info->mouseData >> 16) & 0xFFFF);
+                uint extra = (uint)(info->dwExtraInfo.ToInt64() & 0xFFFFFFFF);
+                bool fromPen = (extra & Native.SIGNATURE_MASK) == Native.MI_WP_SIGNATURE;
                 try
                 {
-                    if (OnMouse(msg, new Point(info->pt.X, info->pt.Y), delta)) return new IntPtr(1);
+                    if (OnMouse(msg, new Point(info->pt.X, info->pt.Y), delta, fromPen)) return new IntPtr(1);
                 }
                 catch (Exception ex) { Program.Log(ex); }
             }

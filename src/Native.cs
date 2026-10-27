@@ -62,6 +62,40 @@ namespace Tomee
 
         public delegate IntPtr HookProc(int nCode, IntPtr wParam, IntPtr lParam);
 
+        // ---- Stylet (Windows Ink / pointeurs) ----
+        public const int WM_POINTERUPDATE = 0x245, WM_POINTERDOWN = 0x246, WM_POINTERUP = 0x247,
+                         WM_TABLET_QUERYSYSTEMGESTURESTATUS = 0x2CC;
+        public const int PT_PEN = 3;
+        public const uint POINTER_FLAG_INCONTACT = 0x4, PEN_MASK_PRESSURE = 0x1;
+        /// <summary>Signature de dwExtraInfo des messages souris générés par un stylet ou le tactile.</summary>
+        public const uint MI_WP_SIGNATURE = 0xFF515700, SIGNATURE_MASK = 0xFFFFFF00;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINTER_INFO
+        {
+            public int pointerType;
+            public uint pointerId, frameId, pointerFlags;
+            public IntPtr sourceDevice, hwndTarget;
+            public POINT ptPixelLocation, ptHimetricLocation, ptPixelLocationRaw, ptHimetricLocationRaw;
+            public uint dwTime, historyCount;
+            public int inputData;
+            public uint dwKeyStates;
+            public ulong performanceCount;
+            public int buttonChangeType;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINTER_PEN_INFO
+        {
+            public POINTER_INFO pointerInfo;
+            public uint penFlags, penMask, pressure, rotation;
+            public int tiltX, tiltY;
+        }
+
+        [DllImport("user32.dll")] public static extern bool GetPointerType(uint pointerId, out int type);
+        [DllImport("user32.dll")] public static extern bool GetPointerPenInfoHistory(uint pointerId, ref uint entriesCount, [Out] POINTER_PEN_INFO[] penInfo);
+        [DllImport("user32.dll")] public static extern bool SetWindowFeedbackSetting(IntPtr hwnd, int feedback, uint flags, uint size, ref int config);
+
         // user32
         [DllImport("user32.dll", SetLastError = true)] public static extern bool UpdateLayeredWindowIndirect(IntPtr hwnd, UPDATELAYEREDWINDOWINFO* info);
         [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hwnd, int cmd);

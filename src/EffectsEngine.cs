@@ -41,7 +41,9 @@ namespace Tomee
 
         Point cursor, drawnCursor = new Point(int.MinValue, int.MinValue);
         bool cursorShown = true, rawCursorShown = true;
-        long rawCursorSince;
+        long rawCursorSince, lastPen = -100000;
+        // durée pendant laquelle le halo reste affiché après la dernière entrée stylet
+        const int PenGrace = 2000;
         int held;                       // 1 gauche, 2 droit, 4 milieu
         long now, findStart = -100000, toastTime = -100000;
         string toast;
@@ -106,6 +108,13 @@ namespace Tomee
             ripples.Add(new Ripple { P = p, T = t, C = c });
         }
 
+        /// <summary>Signale une entrée stylet : Windows masque alors le curseur, mais le halo doit rester visible.</summary>
+        public void OnPenInput(long t)
+        {
+            if (t - lastPen > PenGrace) poked = true;
+            lastPen = t;
+        }
+
         public void Find() { findStart = now; poked = true; }
 
         public void Toast(string text)
@@ -140,7 +149,7 @@ namespace Tomee
             Native.POINT np;
             if (Native.GetCursorPos(out np)) cursor = new Point(np.X, np.Y);
             var ci = new Native.CURSORINFO { cbSize = System.Runtime.InteropServices.Marshal.SizeOf(typeof(Native.CURSORINFO)) };
-            bool shown = !Native.GetCursorInfo(ref ci) || (ci.flags & 1) != 0;
+            bool shown = !Native.GetCursorInfo(ref ci) || (ci.flags & 1) != 0 || now - lastPen < PenGrace;
             if (shown != rawCursorShown) { rawCursorShown = shown; rawCursorSince = now; }
             if (rawCursorShown != cursorShown && now - rawCursorSince >= CursorStateDelay) { cursorShown = rawCursorShown; poked = true; }
             bool waitingHide = false;

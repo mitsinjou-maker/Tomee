@@ -13,7 +13,7 @@ namespace Tomee
     internal static class AppInfo
     {
         public const string Name = "Tomee";
-        public const string Version = "1.0.1";
+        public const string Version = "1.1.0";
         public const string ExeName = "Tomee.exe";
 
         /// <summary>Évènement nommé : demande à l'instance en cours d'ouvrir ses paramètres.</summary>

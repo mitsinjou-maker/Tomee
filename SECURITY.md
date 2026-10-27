@@ -27,4 +27,4 @@
 
 ## Signaler une vulnérabilité
 
-Merci de ne pas publier les détails d'une faille dans une issue publique. Ouvrez une issue indiquant seulement qu'il s'agit d'un problème de sécurité ; un moyen d'échanger en privé vous sera proposé.
+Merci de ne pas publier les détails d'une faille dans une issue publique. Utilisez le signalement privé de GitHub : onglet **Security** du dépôt → **Report a vulnerability** ([lien direct](https://github.com/mitsinjou-maker/Tomee/security/advisories/new)). Seuls vous et le mainteneur voyez le rapport.
